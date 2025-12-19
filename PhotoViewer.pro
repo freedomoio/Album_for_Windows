@@ -13,6 +13,7 @@ SOURCES += \
     mainwindow.cpp
 
 HEADERS += \
+    config/config.h \
     mainwindow.h
 
 FORMS += \

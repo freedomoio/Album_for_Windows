@@ -2,21 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include <QProcess>
-#include <QContextMenuEvent>
-#include <QMessageBox>
-#include <QPixmap>
-#include <QDir>
-#include <QSplitter>
-#include <QList>
-#include <QStringList>
-#include <QStatusBar>
-#include <QToolBar>
-#include <QListWidget>
-#include <QResizeEvent>
-#include <QLabel>
-
-
+#include <vector>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -30,12 +16,12 @@ class MainWindow : public QMainWindow
 
 public:
     MainWindow(QWidget *parent = nullptr);
+    void close();
+    void init();
     ~MainWindow();
-
-private slots:
-    void on_CancelButton_clicked();
 
 private:
     Ui::MainWindow *ui;
+    std::vector<std::pair<QString, QString>> album;
 };
 #endif // MAINWINDOW_H

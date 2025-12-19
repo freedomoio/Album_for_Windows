@@ -2,15 +2,32 @@
 #include "ui_mainwindow.h"
 
 
-#include <qDebug>
-
-
+#include <QDebug>
+#include <QProcess>
+#include <QContextMenuEvent>
+#include <QMessageBox>
+#include <QPixmap>
+#include <QDir>
+#include <QSplitter>
+#include <QList>
+#include <QStringList>
+#include <QStatusBar>
+#include <QToolBar>
+#include <QListWidget>
+#include <QResizeEvent>
+#include <QLabel>
+#include <QMenuBar>
+#include <QMenu>
+#include <QJsonObject>
+#include <QStandardPaths>
+#include <QJsonDocument>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+    init();
 
     QToolBar* toolBar = new QToolBar("功能栏",this);
     this->addToolBar(toolBar);
@@ -30,6 +47,9 @@ MainWindow::MainWindow(QWidget *parent)
     albumListWidget->setMinimumWidth(120);
     albumListWidget->setMaximumWidth(240);
     albumListWidget->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
+    for(const auto& pair : this->album){
+        albumListWidget->addItem(pair.first+","+pair.second);
+    }
 
 
     QWidget *rightArea = new QWidget(mainSplitter);
@@ -46,54 +66,62 @@ MainWindow::MainWindow(QWidget *parent)
     statusBar->showMessage("就绪");
     this->setStatusBar(statusBar);
 
+}
+#include <QJsonArray>
+void MainWindow::init(){
+    QString path(QCoreApplication::applicationDirPath());
+    QFile file(path+"/data/album.json");
+    if(!file.exists()){
+        return;
+    }
+    if(!file.open(QIODevice::ReadOnly)){
+        return;
+    }
+    QJsonDocument doc = QJsonDocument::fromJson(file.read(file.size()));
+    if(doc.isNull()){
+        qDebug() << "JSON文件格式有误";
+        return;
+    }
+    QJsonObject obj = doc.object();//获取顶层对象
+    if(obj.contains("album")){
+        QJsonObject album = obj["album"].toObject();
+        auto begin = album.begin();
+        auto end = album.end();
+        while(begin < end){
+            this->album.push_back({begin.key(), begin.value().toString()});
+            ++begin;
+        }
+    }
+}
 
+void MainWindow::close(){
+    QJsonObject root;
+    QString path(QCoreApplication::applicationDirPath());
+    QFile file(path+"/data/album.json");//不要试图使用QDir的相关方法，他们不会修改对象本身
 
+    QJsonObject tar;
+    /*
+     * tar[""],""中的值不同，堆放的是同级的json数据
+     */
+    for(const std::pair<QString, QString>& p : this->album){
+        tar[p.first] = p.second;
+    }
+    root["album"] = tar;
 
+    if(!file.exists()){
+        if(!file.open(QIODevice::NewOnly)){//只是以创建的方式打开文件
+            qDebug() << file.errorString();
+        }
+    }
+    if(!file.open(QIODevice::WriteOnly)){//只是以写入的方式打开文件
+        qDebug() << file.errorString();
+        return;
+    }
+    file.write(QJsonDocument(root).toJson());
 }
 
 MainWindow::~MainWindow()
 {
+    close();
     delete ui;
 }
-
-
-
-void MainWindow::on_CancelButton_clicked()
-{
-    QPixmap pixmap;
-
-    QString exeDir = QCoreApplication::applicationDirPath();
-    QString parentDir = QDir(exeDir).absoluteFilePath("../../../");
-    QString photoDir = QDir::cleanPath(parentDir + "/resources/images/");
-    QString photoPath = photoDir + "/1.jpg";
-
-    qDebug() << "最终图片路径：" << photoPath;
-
-    if(pixmap.load(photoPath)) {
-
-        ui->label_2->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-        ui->label_2->setScaledContents(false);
-        ui->label_2->setAlignment(Qt::AlignCenter);
-
-        connect(this, &MainWindow::resizeEvent, this, [=](QResizeEvent *event){
-            Q_UNUSED(event);
-            QPixmap scaledPix = pixmap.scaled(
-                ui->label_2->size(),
-                Qt::KeepAspectRatio,
-                Qt::SmoothTransformation
-                );
-            ui->label_2->setPixmap(scaledPix);
-        });
-
-        QPixmap scaledPix = pixmap.scaled(
-            ui->label_2->size(),
-            Qt::KeepAspectRatio,
-            Qt::SmoothTransformation
-            );
-        ui->label_2->setPixmap(scaledPix);
-    } else {
-        QMessageBox::information(this,"信息","未找到文件，路径：" + photoPath);
-    }
-}
-
-
