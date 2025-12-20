@@ -3,24 +3,10 @@
 
 
 #include <QDebug>
-#include <QProcess>
-#include <QContextMenuEvent>
-#include <QMessageBox>
-#include <QPixmap>
-#include <QDir>
-#include <QSplitter>
-#include <QList>
-#include <QStringList>
-#include <QStatusBar>
-#include <QToolBar>
-#include <QListWidget>
-#include <QResizeEvent>
-#include <QLabel>
-#include <QMenuBar>
-#include <QMenu>
-#include <QJsonObject>
-#include <QStandardPaths>
-#include <QJsonDocument>
+
+
+QStringList g_photoPaths;
+//全局照片路径 用于显示当前照片
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -29,6 +15,10 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
     init();
 
+    //初始化尺寸
+    this ->resize(1000,600);
+
+    //工具栏
     QToolBar* toolBar = new QToolBar("功能栏",this);
     this->addToolBar(toolBar);
 
@@ -39,35 +29,123 @@ MainWindow::MainWindow(QWidget *parent)
     toolBar->addWidget(addPhotoBtn);
     toolBar->addWidget(thumbSmallBtn);
 
+    //中层分割器
+
     QSplitter *mainSplitter = new QSplitter(Qt::Horizontal,this);
     this->setCentralWidget(mainSplitter);
 
+    //左侧相册列表
     QListWidget *albumListWidget = new QListWidget(mainSplitter);
     albumListWidget->addItem("默认相册");
     albumListWidget->setMinimumWidth(120);
     albumListWidget->setMaximumWidth(240);
-    albumListWidget->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
     for(const auto& pair : this->album){
         albumListWidget->addItem(pair.first+","+pair.second);
     }
 
-
+    //右侧缩略图区
     QWidget *rightArea = new QWidget(mainSplitter);
-    rightArea->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Expanding);
-    QGridLayout *thumbLayout = new QGridLayout(mainSplitter);
-    rightArea->setLayout(thumbLayout);
+    QVBoxLayout *rightLayout = new QVBoxLayout(rightArea);
+    rightArea->setLayout(rightLayout);
+
+    QWidget *thumbArea = new QWidget(rightArea);
+    QGridLayout *thumbLayout = new QGridLayout(thumbArea);
+    thumbArea->setLayout(thumbLayout);
+    rightLayout->addWidget(thumbArea);
+
+    //分配默认布局
+    QList<int> splitterSizes;
+    splitterSizes<<120<<880;
+    mainSplitter->setSizes(splitterSizes);
 
 
-    mainSplitter->setStretchFactor(0,1);
-    mainSplitter->setStretchFactor(1,4);
-
-
+    //底层状态栏
     QStatusBar *statusBar = new QStatusBar(this);
     statusBar->showMessage("就绪");
     this->setStatusBar(statusBar);
 
+
+    //信号
+    connect(addPhotoBtn,&QPushButton::clicked,this,[=](){
+        QStringList photoPaths = QFileDialog::getOpenFileNames(
+                this,"选择照片",QCoreApplication::applicationDirPath(),"图片文件 (*.jpg *.png *.jepg)"
+            );
+
+        if(photoPaths.isEmpty())return;
+
+        while(QLayoutItem *item = thumbLayout->takeAt(0)){
+            if(QWidget *w = item->widget()) w->deleteLater();
+            delete item;
+        }
+
+        g_photoPaths.clear();
+        g_photoPaths = photoPaths;
+        int row = 0,col = 0;
+
+        //创建缩略图
+        for(const QString& path:photoPaths){
+            ClickableLabel *thumbLabel = new ClickableLabel(thumbArea);
+            QPixmap pix(path);
+            QPixmap scaledThumb = pix.scaled(
+                80,80,Qt::KeepAspectRatio,Qt::SmoothTransformation);
+            thumbLabel->setPixmap(scaledThumb);
+            thumbLabel->setAlignment(Qt::AlignCenter);
+            thumbLabel->setStyleSheet(" solid #ccc;border-radius:4px");
+            thumbLabel->setCursor(Qt::PointingHandCursor);
+
+            //大图显示
+            connect(thumbLabel,&ClickableLabel::clicked,this,[=](){
+
+                qDebug() << "开始创建大图窗口，路径：" << path;
+
+                QWidget *bigPhotoWindow = new QWidget();
+                bigPhotoWindow->setWindowTitle(QFileInfo(path).fileName());
+                bigPhotoWindow->setWindowFlags(Qt::WindowStaysOnTopHint | Qt::FramelessWindowHint | Qt::Window);
+                bigPhotoWindow->setAttribute(Qt::WA_DeleteOnClose);
+                bigPhotoWindow->setStyleSheet("background-color:#f5f5f5;");
+                bigPhotoWindow->setMinimumSize(400, 300);
+                bigPhotoWindow->resize(800,600);
+
+                //屏幕信息
+                QRect screenRect = QGuiApplication::primaryScreen()->geometry();
+                int WinX = (screenRect.width() - bigPhotoWindow->width()) /2;
+                int WinY = (screenRect.height() - bigPhotoWindow->height()) /2;
+                bigPhotoWindow->move(WinX,WinY);
+
+                //显示图片
+                QLabel *bigPhotoLabel = new QLabel(bigPhotoWindow);
+                bigPhotoLabel->setGeometry(0,0,bigPhotoWindow->width(),bigPhotoWindow->height());
+                bigPhotoLabel->setAlignment(Qt::AlignCenter);
+                bigPhotoLabel->setScaledContents(false);
+
+                QPixmap bigPix(path);
+                QPixmap scaledBig = bigPix.scaled(
+                bigPhotoWindow->size(),Qt::KeepAspectRatio,Qt::SmoothTransformation);
+                bigPhotoLabel->setPixmap(scaledBig);
+
+                QPoint dragStartPos;
+
+
+                bigPhotoWindow->show();
+
+                qDebug() << "大图窗口已创建，是否显示：" << bigPhotoWindow->isVisible();
+
+
+            });
+
+            //显示缩略图
+            thumbLayout->addWidget(thumbLabel,row,col);
+            col++;
+            if(col >= 4){
+                col = 0;
+                row++;
+            }
+        }
+    });
+
 }
-#include <QJsonArray>
+
+
 void MainWindow::init(){
     QString path(QCoreApplication::applicationDirPath());
     QFile file(path+"/data/album.json");
