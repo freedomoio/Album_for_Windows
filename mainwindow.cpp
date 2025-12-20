@@ -5,8 +5,6 @@
 #include <QDebug>
 
 
-QStringList g_photoPaths;
-//全局照片路径 用于显示当前照片
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -96,7 +94,7 @@ MainWindow::MainWindow(QWidget *parent)
             //大图显示
             connect(thumbLabel,&ClickableLabel::clicked,this,[=](){
 
-                qDebug() << "开始创建大图窗口，路径：" << path;
+                // qDebug() << "开始创建大图窗口，路径：" << path;
 
                 QWidget *bigPhotoWindow = new QWidget();
                 bigPhotoWindow->setWindowTitle(QFileInfo(path).fileName());
@@ -111,11 +109,18 @@ MainWindow::MainWindow(QWidget *parent)
                 int WinX = (screenRect.width() - bigPhotoWindow->width()) /2;
                 int WinY = (screenRect.height() - bigPhotoWindow->height()) /2;
                 bigPhotoWindow->move(WinX,WinY);
+                //布局
+                QVBoxLayout *vLayout = new QVBoxLayout(bigPhotoWindow);
+                QHBoxLayout *hLayout = new QHBoxLayout(bigPhotoWindow);
 
                 //显示图片
                 QLabel *bigPhotoLabel = new QLabel(bigPhotoWindow);
-                bigPhotoLabel->setGeometry(0,0,bigPhotoWindow->width(),bigPhotoWindow->height());
+                // bigPhotoLabel->setGeometry(0,0,bigPhotoWindow->width(),bigPhotoWindow->height());
                 bigPhotoLabel->setAlignment(Qt::AlignCenter);
+                hLayout->addWidget(bigPhotoLabel);
+                hLayout->setAlignment(Qt::AlignCenter);
+                vLayout->addLayout(hLayout);
+                vLayout->setAlignment(Qt::AlignCenter);
                 bigPhotoLabel->setScaledContents(false);
 
                 QPixmap bigPix(path);
@@ -123,13 +128,10 @@ MainWindow::MainWindow(QWidget *parent)
                 bigPhotoWindow->size(),Qt::KeepAspectRatio,Qt::SmoothTransformation);
                 bigPhotoLabel->setPixmap(scaledBig);
 
-                QPoint dragStartPos;
-
+                PhotoWindowEventFilter *filter = new PhotoWindowEventFilter(bigPix,bigPhotoLabel,screenRect,bigPhotoWindow);
+                bigPhotoWindow->installEventFilter(filter);
 
                 bigPhotoWindow->show();
-
-                qDebug() << "大图窗口已创建，是否显示：" << bigPhotoWindow->isVisible();
-
 
             });
 
