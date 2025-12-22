@@ -27,6 +27,8 @@
 #include <vector>
 #include <QtMinMax>
 #include <QRect>
+#include <QInputDialog>
+#include <QSettings>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -137,9 +139,35 @@ private:
     QPoint m_dragStartPos;
 };
 
+struct AlbumInfo
+{
+    QString albumName;
+    QStringList photoPaths;
+
+    AlbumInfo() = default;
+    AlbumInfo(const QString& name,const QStringList& photos = {})
+        : albumName(name),photoPaths(photos){}
+
+};
+
+ using albumList = QList<AlbumInfo>;
+
+// void addNewAlbum(QString& name){
+//     for(const AlbumInfo& Album:AlbumList){
+//         if(Album.albumName == name){
+//             QMessageBox::information(nullptr,"信息","同名相册已存在");
+//             return;
+//         }
+//     }
+// }
+
+
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
+
+    friend void addalbum(const QString& name);
 
 public:
     MainWindow(QWidget *parent = nullptr);
@@ -147,12 +175,23 @@ public:
     void init();
     ~MainWindow();
 
+    std::pair<QString,std::vector<QString>> findAlbum(const QString& albumname){
+        for(std::pair<QString,std::vector<QString>>& album: AlbumList){
+            if(album.first == albumname)return album;
+        }
+        return std::make_pair((QString)'1',std::vector<QString>());
+    }
+
+
+
 private:
     Ui::MainWindow *ui;
 
     QStringList g_photoPaths;
 
     //一个相册对应一个QString和其中的图片的名字，名字需要记录后缀名
-    std::vector<std::pair<QString, std::vector<QString>>> album;
+
+    std::vector<std::pair<QString, std::vector<QString>>> AlbumList;
+    QString lastPath;
 };
 #endif // MAINWINDOW_H
