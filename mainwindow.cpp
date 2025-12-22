@@ -37,8 +37,9 @@ MainWindow::MainWindow(QWidget *parent)
     albumListWidget->addItem("默认相册");
     albumListWidget->setMinimumWidth(120);
     albumListWidget->setMaximumWidth(240);
+    //批量导入相册
     for(const auto& pair : this->album){
-        albumListWidget->addItem(pair.first+","+pair.second);
+        albumListWidget->addItem(pair.first);
     }
 
     //右侧缩略图区
@@ -149,6 +150,7 @@ MainWindow::MainWindow(QWidget *parent)
 
 
 void MainWindow::init(){
+    //查找album.json文件，这个文件是用来记录相册名的。
     QString path(QCoreApplication::applicationDirPath());
     QFile file(path+"/data/album.json");
     if(!file.exists()){
@@ -168,7 +170,12 @@ void MainWindow::init(){
         auto begin = album.begin();
         auto end = album.end();
         while(begin < end){
-            this->album.push_back({begin.key(), begin.value().toString()});
+            QJsonArray photos = begin.value().toArray();
+            std::pair<QString, std::vector<QString>> p{begin.key(), std::vector<QString>()};
+            for(const auto& photo : photos){
+                p.second.push_back(photo.toString());
+            }
+            this->album.push_back(p);
             ++begin;
         }
     }
@@ -183,8 +190,13 @@ void MainWindow::close(){
     /*
      * tar[""],""中的值不同，堆放的是同级的json数据
      */
-    for(const std::pair<QString, QString>& p : this->album){
-        tar[p.first] = p.second;
+    for(const std::pair<QString, std::vector<QString>>& p : this->album){
+        QJsonArray arr;
+        const auto& photos = p.second;
+        for(const QString& photo : photos){
+            arr.push_back(photo);
+        }
+        tar[p.first] = arr;
     }
     root["album"] = tar;
 

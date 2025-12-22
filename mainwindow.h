@@ -152,6 +152,7 @@ private:
 
     QStringList g_photoPaths;
 
-    std::vector<std::pair<QString, QString>> album;
+    //一个相册对应一个QString和其中的图片的名字，名字需要记录后缀名
+    std::vector<std::pair<QString, std::vector<QString>>> album;
 };
 #endif // MAINWINDOW_H
