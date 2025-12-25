@@ -10,14 +10,18 @@ CONFIG += c++17
 
 SOURCES += \
     main.cpp \
-    mainwindow.cpp
+    widget/clickablelabel.cpp \
+    window/mainwindow.cpp \
+    event/photowindoweventfilter.cpp
 
 HEADERS += \
     config/config.h \
-    mainwindow.h
+    widget/clickablelabel.h \
+    window/mainwindow.h \
+    event/photowindoweventfilter.h
 
 FORMS += \
-    mainwindow.ui
+    window/mainwindow.ui
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
@@ -25,3 +29,6 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
 RESOURCES +=
+
+DISTFILES += \
+    log.md
