@@ -192,50 +192,11 @@ MainWindow::MainWindow(QWidget *parent)
             qDebug() << "你说这扯不扯，原本不应该是空指针的，请检查序列化和反序列化";
         }
 
-        //创建缩略图 + 文件拷贝
+        //创建缩略图
         for(int i = 0; i < photoPaths.size(); i++){
-
-            QFile photoFile(photoPaths[i]);
-            if(!photoFile.open(QIODevice::ReadOnly)){
-                qDebug() << photoFile.errorString();
-            }
-
-            QByteArray data = photoFile.readAll();
-            photoFile.close();
-
-            QString photoDirPath = app_path + "/photo";
-            QDir photoDir(photoDirPath);
-            if(!photoDir.exists()){
-                photoDir.mkdir(".");
-            }
-
-            QFileInfo fileInfo(photoPaths[i]);
-            QString fileName = fileInfo.fileName();
-
-            QString targetPath = photoDirPath +"/" + fileName;
-            QFile WriteFile(targetPath);
-            bool suc = true;
-            if(!WriteFile.exists()){
-                if(!WriteFile.open(QIODevice::NewOnly)){
-                    qDebug() << "文件创建失败，" << WriteFile.errorString();
-                    suc = false;
-                }
-            }
-            if(!suc && !WriteFile.open(QIODevice::WriteOnly)){
-                qDebug() << "文件打开失败，" << WriteFile.errorString();
-                suc = false;
-            }
-            if(!suc){
-                qDebug() << "有问题哦，251行";
-                return;
-            }
-            if(suc){
-                WriteFile.write(data);
-                WriteFile.close();
-            }
-
             album->push_back(photoPaths[i]);
             ClickableLabel *thumbLabel = new ClickableLabel(thumbArea, album);
+            thumbLabel->setIdx(i);
             QPixmap pix(photoPaths[i]);
             QPixmap scaledThumb = pix.scaled(
                 80,80,Qt::KeepAspectRatio,Qt::SmoothTransformation);
@@ -256,7 +217,6 @@ MainWindow::MainWindow(QWidget *parent)
             }
         }
     });
-
 }
 
 void MainWindow::add_album(MainWindow& w){
