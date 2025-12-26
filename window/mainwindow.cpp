@@ -175,6 +175,7 @@ MainWindow::MainWindow(QWidget *parent)
 
         QFileInfo selectedFile(photoPaths.first());
         QString lastPath = selectedFile.absolutePath();
+        check_dir("data");
         QSettings settings(app_path + "/data/config.ini",QSettings::IniFormat);
         settings.setValue("LastPhotoPath",lastPath);
 
@@ -194,45 +195,6 @@ MainWindow::MainWindow(QWidget *parent)
 
         //创建缩略图 + 文件拷贝
         for(int i = 0; i < photoPaths.size(); i++){
-
-            QFile photoFile(photoPaths[i]);
-            if(!photoFile.open(QIODevice::ReadOnly)){
-                qDebug() << photoFile.errorString();
-            }
-
-            QByteArray data = photoFile.readAll();
-            photoFile.close();
-
-            QString photoDirPath = app_path + "/photo";
-            QDir photoDir(photoDirPath);
-            if(!photoDir.exists()){
-                photoDir.mkdir(".");
-            }
-
-            QFileInfo fileInfo(photoPaths[i]);
-            QString fileName = fileInfo.fileName();
-
-            QString targetPath = photoDirPath +"/" + fileName;
-            QFile WriteFile(targetPath);
-            bool suc = true;
-            if(!WriteFile.exists()){
-                if(!WriteFile.open(QIODevice::NewOnly)){
-                    qDebug() << "文件创建失败，" << WriteFile.errorString();
-                    suc = false;
-                }
-            }
-            if(!suc && !WriteFile.open(QIODevice::WriteOnly)){
-                qDebug() << "文件打开失败，" << WriteFile.errorString();
-                suc = false;
-            }
-            if(!suc){
-                qDebug() << "有问题哦，251行";
-                return;
-            }
-            if(suc){
-                WriteFile.write(data);
-                WriteFile.close();
-            }
 
             album->push_back(photoPaths[i]);
             ClickableLabel *thumbLabel = new ClickableLabel(thumbArea, album);
@@ -282,8 +244,15 @@ void MainWindow::add_album(MainWindow& w){
     w.album_list_widget->addItem(albumName);
     w.album_list.push_back(std::make_pair(albumName,std::vector<QString>()));
 }
+void MainWindow::check_dir(const QString& dir_name){
+    QDir data(app_path+(dir_name[0] == '/' ? "" : "/")+dir_name);
+    if(!data.exists()){
+        data.mkdir(".");
+    }
+}
 
 void MainWindow::init(){
+    check_dir("data");
     QSettings settings(app_path + "/data/config.ini",QSettings::IniFormat);
     last_path = settings.value("LastPhotoPath",app_path).toString();
     //查找album.json文件，这个文件是用来记录相册名的。
@@ -314,11 +283,13 @@ void MainWindow::init(){
             ++begin;
         }
     }
+    file.close();
 }
 
 void MainWindow::close(){
     QJsonObject root;
     QString path(app_path);
+    check_dir("data");
     QFile file(path+"/data/album.json");//不要试图使用QDir的相关方法，他们不会修改对象本身
 
     QJsonObject tar;
@@ -339,12 +310,14 @@ void MainWindow::close(){
         if(!file.open(QIODevice::NewOnly)){//只是以创建的方式打开文件
             qDebug() << file.errorString();
         }
+        file.close();//此处需要关闭新创建的文件，否则在下面以写入方式打开文件的时候会报错说已经打开
     }
     if(!file.open(QIODevice::WriteOnly)){//只是以写入的方式打开文件
         qDebug() << file.errorString();
         return;
     }
     file.write(QJsonDocument(root).toJson());
+    file.close();
 }
 
 MainWindow::~MainWindow()
