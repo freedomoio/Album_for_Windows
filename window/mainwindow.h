@@ -50,6 +50,8 @@ public:
     void close();
     //打开程序的时候从本地文件当中读取对应的数据
     void init();
+    //检查路径是否存在
+    void check_dir(const QString& name);
     ~MainWindow();
 
     //返回相册在相册列表中的下标
